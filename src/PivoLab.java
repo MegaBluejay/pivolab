@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PivoLab {
 
@@ -173,7 +174,7 @@ public class PivoLab {
                 else if (command.equals("insert")) {
                     simpleSingleArg(args,
                             Long::parseLong,
-                            Predicate.not(marines::containsKey),
+                            k -> !marines.containsKey(k),
                             "insert",
                             "key",
                             "key already present",
@@ -204,7 +205,7 @@ public class PivoLab {
                     try {
                         PrintWriter writer = new PrintWriter(saveFilePath);
                         marines.forEach((key, m) -> writer.println(
-                                String.join(", ", List.of(key.toString(), m.getId().toString(), m.getName()
+                                String.join(", ", key.toString(), m.getId().toString(), m.getName()
                                         , Double.toString(m.getCoordinates().getX())
                                         , m.getCoordinates().getY().toString(), dateFormat.format(m.getCreationDate())
                                         , m.getHealth().toString()
@@ -212,7 +213,7 @@ public class PivoLab {
                                         , m.getWeaponType().toString(), m.getMeleeWeapon().toString()
                                         , m.getChapter() == null ? "null" : m.getChapter().getName()
                                         , m.getChapter() == null || m.getChapter().getWorld() == null
-                                                ? "null" : m.getChapter().getWorld()))
+                                                ? "null" : m.getChapter().getWorld())
                         ));
                         writer.close();
                     } catch (FileNotFoundException e) {
@@ -372,7 +373,7 @@ public class PivoLab {
     private SpaceMarine readMarine(Scanner scanner, boolean quiet) {
         String name = readObject(scanner,
                 s -> s,
-                Predicate.not(String::isEmpty),
+                s -> !s.isEmpty(),
                 "Enter name: ",
                 "name can't be empty",
                 false,
@@ -454,7 +455,7 @@ public class PivoLab {
         if (needChapter) {
             String chapterName = readObject(scanner,
                     cn -> cn,
-                    Predicate.not(String::isEmpty),
+                    s -> !s.isEmpty(),
                     "Enter chapter name: ",
                     "chapter name can't be empty",
                     false,
