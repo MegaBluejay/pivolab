@@ -18,31 +18,86 @@ public class PivoLab {
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yy");
 
-    public void readFile() throws IOException, ParseException, NumberFormatException {
-        InputStream stream = new FileInputStream(saveFilePath);
+    public void readFile() throws PivoFileException {
+        InputStream stream;
+        try {
+            stream = new FileInputStream(saveFilePath);
+        } catch (FileNotFoundException e) {
+            throw PivoFileException.notFound();
+        }
         InputStreamReader reader = new InputStreamReader(stream);
         String line;
         int i = 1;
-        while (!(line = readLine(reader)).isEmpty()) {
+        while (true) {
+            try {
+                if ((line = readLine(reader)).isEmpty()) break;
+            } catch (IOException e) {
+                throw PivoFileException.readProblem();
+            }
             String[] fields = line.split(" *, *");
             if (fields.length != 12) {
-                throw new IllegalArgumentException(); // todo proper exception
+                throw PivoFileException.nFields(i, fields.length);
             }
-            Long key = Long.parseLong(fields[0]);
-            Long id = Long.parseLong(fields[1]);
+            long key;
+            try {
+                key = Long.parseLong(fields[0]);
+            } catch (NumberFormatException e) {
+                throw PivoFileException.invalidField(i, "key");
+            }
+            long id;
+            try {
+                id = Long.parseLong(fields[1]);
+            } catch (NumberFormatException e) {
+                throw PivoFileException.invalidField(i, "id");
+            }
             String name = fields[2];
-            Coordinates coordinates = new Coordinates(Double.parseDouble(fields[3]),
-                    Double.parseDouble(fields[4]));
-            Date creationData = dateFormat.parse(fields[5]);
-            Float health = Float.parseFloat(fields[6]);
+            double x;
+            double y;
+            try {
+                x = Double.parseDouble(fields[3]);
+            } catch (NumberFormatException e) {
+                throw PivoFileException.invalidField(i, "x coord");
+            }
+            try {
+                y = Double.parseDouble(fields[4]);
+            } catch (NumberFormatException e) {
+                throw PivoFileException.invalidField(i, "y coord");
+            }
+            Coordinates coordinates = new Coordinates(x, y);
+            Date creationDate;
+            try {
+                 creationDate = dateFormat.parse(fields[5]);
+            } catch (ParseException e) {
+                throw PivoFileException.invalidField(i, "date");
+            }
+            float health;
+            try {
+                health = Float.parseFloat(fields[6]);
+            } catch (NumberFormatException e) {
+                throw PivoFileException.invalidField(i, "health");
+            }
             AstartesCategory category;
             if (fields[7].equals("null")) {
                 category = null;
             } else {
-                category = AstartesCategory.valueOf(fields[7]);
+                try {
+                    category = AstartesCategory.valueOf(fields[7]);
+                } catch (IllegalArgumentException e) {
+                    throw PivoFileException.invalidField(i, "category");
+                }
             }
-            Weapon weaponType = Weapon.valueOf(fields[8]);
-            MeleeWeapon meleeWeapon = MeleeWeapon.valueOf(fields[9]);
+            Weapon weaponType;
+            try {
+                weaponType = Weapon.valueOf(fields[8]);
+            } catch (IllegalArgumentException e) {
+                throw PivoFileException.invalidField(i, "weapon type");
+            }
+            MeleeWeapon meleeWeapon;
+            try {
+                meleeWeapon = MeleeWeapon.valueOf(fields[9]);
+            } catch (IllegalArgumentException e) {
+                throw PivoFileException.invalidField(i, "melee weapon");
+            }
             Chapter chapter;
             if (fields[10].equals("null")) {
                 chapter = null;
@@ -56,7 +111,7 @@ public class PivoLab {
                 }
                 chapter = new Chapter(chapterName, world);
             }
-            marines.put(key, new SpaceMarine(id, name, coordinates, creationData, health, category, weaponType, meleeWeapon, chapter));
+            marines.put(key, new SpaceMarine(id, name, coordinates, creationDate, health, category, weaponType, meleeWeapon, chapter));
             i++;
         }
         maxid = marines.values().stream().map(SpaceMarine::getId).max(Long::compare).orElse(0L);
@@ -244,40 +299,43 @@ public class PivoLab {
 
     private static void help() {
         System.out.println("all args written as {arg} must be specified on further lines");
-        System.out.println("help\tprint help");
-        System.out.println("info\tprint info about current state of marines");
-        System.out.println("show\tprint all marines");
-        System.out.println("insert key {marine}\tadd new marine with given key");
-        System.out.println("update id {marine}\tupdate marine with given id");
-        System.out.println("remove_key key\tdelete marine with given key");
-        System.out.println("clear\tdelete all marines");
-        System.out.println("save\tsave marines to file");
-        System.out.println("execute_script file_name\texecute script");
-        System.out.println("exit\tend execution");
-        System.out.println("remove_lower {marine}\tdelete all marines with health lower than the one given");
-        System.out.println("replace_if_lower key {marine}\treplace marine with key with given one if the new health is lower than the old");
-        System.out.println("remove_lower_key key\tdelete all marines with key lower than given");
-        System.out.println("group_counting_by_creation_date\tprint number of marines with each creation date");
-        System.out.println("filter_greater_than_category {category}\tprint marines with categories higher than the one given");
-        System.out.println("print_ascending\tprint all marines sorted by health");
+        System.out.println("help print help");
+        System.out.println("info print info about current state of marines");
+        System.out.println("show print all marines");
+        System.out.println("insert key {marine} add new marine with given key");
+        System.out.println("update id {marine} update marine with given id");
+        System.out.println("remove_key key delete marine with given key");
+        System.out.println("clear delete all marines");
+        System.out.println("save save marines to file");
+        System.out.println("execute_script file_name execute script");
+        System.out.println("exit end execution");
+        System.out.println("remove_lower {marine} delete all marines with health lower than the one given");
+        System.out.println("replace_if_lower key {marine} replace marine with key with given one if the new health is lower than the old");
+        System.out.println("remove_lower_key key delete all marines with key lower than given");
+        System.out.println("group_counting_by_creation_date print number of marines with each creation date");
+        System.out.println("filter_greater_than_category {category} print marines with categories higher than the one given");
+        System.out.println("print_ascending print all marines sorted by health");
     }
 
     private void info() {
-        System.out.println("type:\tHashMap<Long, SpaceMarine>");
-        System.out.println("initialization date:\twtf");
-        System.out.println("number of elements:\t" + marines.size());
+        System.out.println("type: HashMap<Long, SpaceMarine>");
+        System.out.println("number of elements: " + marines.size());
+        if (!marines.isEmpty()) {
+            System.out.println("newest marine created on " + marines.values().stream().max(Comparator.comparing(SpaceMarine::getCreationDate)));
+        }
     }
 
-    private static void printMarine(SpaceMarine marine) {
-        System.out.println("ID:\t" + marine.getId());
-        System.out.println("Name:\t" + marine.getName());
-        System.out.println("Coordinates:\t" + marine.getCoordinates());
-        System.out.println("Creation date:\t" + dateFormat.format(marine.getCreationDate()));
-        System.out.println("Health:\t" + marine.getHealth());
-        System.out.println("Category:\t" + marine.getCategory());
-        System.out.println("Weapon type:\t" + marine.getWeaponType());
-        System.out.println("Melee weapon:\t" + marine.getMeleeWeapon());
-        System.out.println("Chapter:\t" + marine.getChapter());
+    private static void printMarine(Long key, SpaceMarine marine) {
+        System.out.println("Key: " + key);
+        System.out.println("ID: " + marine.getId());
+        System.out.println("Name: " + marine.getName());
+        System.out.println("Coordinates: " + marine.getCoordinates());
+        System.out.println("Creation date: " + dateFormat.format(marine.getCreationDate()));
+        System.out.println("Health: " + marine.getHealth());
+        System.out.println("Category: " + marine.getCategory());
+        System.out.println("Weapon type: " + marine.getWeaponType());
+        System.out.println("Melee weapon: " + marine.getMeleeWeapon());
+        System.out.println("Chapter: " + marine.getChapter());
     }
 
     private static <T> T readObject(Scanner scanner, Function<String, T> conv, Predicate<T> isValid, String promptMessage, String errorMessage, boolean canBeEmpty) {
@@ -392,8 +450,8 @@ public class PivoLab {
     }
 
     private void show() {
-        marines.values().forEach(m -> {
-            printMarine(m);
+        marines.forEach((key, marine) -> {
+            printMarine(key, marine);
             System.out.println();
         });
     }
@@ -444,14 +502,24 @@ public class PivoLab {
     }
 
     private void filterGreaterThanCategory(AstartesCategory category) {
-        marines.values().stream()
-                .filter(marine -> marine.getCategory().ordinal() > category.ordinal())
-                .forEach(PivoLab::printMarine);
+        for (Map.Entry<Long, SpaceMarine> e : marines.entrySet()) {
+            if (e.getValue().getCategory().ordinal() > category.ordinal()) {
+                printMarine(e.getKey(), e.getValue());
+                System.out.println();
+            }
+        }
+    }
+
+    private static <A,B,C> Function<A, C> compose(Function<B, C> f, Function<A, B> g) {
+        return g.andThen(f);
     }
 
     private void printAscending() {
-        marines.values().stream()
-                .sorted(Comparator.comparing(SpaceMarine::getHealth))
-                .forEach(PivoLab::printMarine);
+        marines.entrySet().stream()
+                .sorted(Comparator.comparing(compose(SpaceMarine::getHealth, Map.Entry::getValue)))
+                .forEach(e -> {
+                    printMarine(e.getKey(), e.getValue());
+                    System.out.println();
+                });
     }
 }
