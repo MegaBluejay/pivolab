@@ -152,8 +152,10 @@ public class PivoLab {
         }
     }
 
-    public void interact(Scanner scanner) {
-        System.out.print("> ");
+    public void interact(Scanner scanner, boolean quiet) {
+        if (!quiet) {
+            System.out.print("> ");
+        }
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
             String[] args = line.split(" +");
@@ -175,7 +177,7 @@ public class PivoLab {
                             "insert",
                             "key",
                             "key already present",
-                            k -> insert(k, readMarine(scanner)));
+                            k -> insert(k, readMarine(scanner, quiet)));
                 }
                 else if (command.equals("update")) {
                     simpleSingleArg(args,
@@ -184,7 +186,7 @@ public class PivoLab {
                             "update",
                             "id",
                             "id not found",
-                            id -> update(id, readMarine(scanner)));
+                            id -> update(id, readMarine(scanner, quiet)));
                 }
                 else if (command.equals("remove_key")) {
                     simpleSingleArg(args,
@@ -212,6 +214,7 @@ public class PivoLab {
                                         , m.getChapter() == null || m.getChapter().getWorld() == null
                                                 ? "null" : m.getChapter().getWorld()))
                         ));
+                        writer.close();
                     } catch (FileNotFoundException e) {
                         System.out.println("problem with save file");
                     }
@@ -228,7 +231,7 @@ public class PivoLab {
                         try {
                             if (Files.isReadable(scriptFile.toPath())) {
                                 Scanner scriptScanner = new Scanner(new FileInputStream(scriptFile));
-                                interact(scriptScanner);
+                                interact(scriptScanner, true);
                             }
                             else {
                                 System.out.println("file not readable");
@@ -246,7 +249,7 @@ public class PivoLab {
                         System.out.println("remove_lower doesn't take any same-line arguments");
                     }
                     else {
-                        removeLower(readMarine(scanner));
+                        removeLower(readMarine(scanner, quiet));
                     }
                 }
                 else if (command.equals("replace_if_lower")) {
@@ -256,7 +259,7 @@ public class PivoLab {
                             "replace_if_lower",
                             "key",
                             "key not found",
-                            k -> replaceIfLower(k, readMarine(scanner)));
+                            k -> replaceIfLower(k, readMarine(scanner, quiet)));
                 }
                 else if (command.equals("remove_lower_key")) {
                     simpleSingleArg(args,
@@ -282,7 +285,8 @@ public class PivoLab {
                                         Arrays.stream(AstartesCategory.values()).map(AstartesCategory::toString)
                                                 .collect(Collectors.joining(", ")) + "]): ",
                                 "invalid category",
-                                false);
+                                false,
+                                quiet);
                         filterGreaterThanCategory(category);
                     }
                 }
@@ -293,7 +297,9 @@ public class PivoLab {
                     System.out.println("unknown command");
                 }
             }
-            System.out.print("> ");
+            if (!quiet) {
+                System.out.print("> ");
+            }
         }
     }
 
@@ -335,12 +341,20 @@ public class PivoLab {
         System.out.println("Category: " + marine.getCategory());
         System.out.println("Weapon type: " + marine.getWeaponType());
         System.out.println("Melee weapon: " + marine.getMeleeWeapon());
-        System.out.println("Chapter: " + marine.getChapter());
+        if (marine.getChapter() == null) {
+            System.out.println("Chapter: null");
+        }
+        else {
+            System.out.println("Chapter name: " + marine.getChapter().getName());
+            System.out.println("Chapter world: " + marine.getChapter().getWorld());
+        }
     }
 
-    private static <T> T readObject(Scanner scanner, Function<String, T> conv, Predicate<T> isValid, String promptMessage, String errorMessage, boolean canBeEmpty) {
+    private static <T> T readObject(Scanner scanner, Function<String, T> conv, Predicate<T> isValid, String promptMessage, String errorMessage, boolean canBeEmpty, boolean quiet) {
         while (true) {
-            System.out.print(promptMessage);
+            if (!quiet) {
+                System.out.print(promptMessage);
+            }
             String line = scanner.nextLine();
             if (canBeEmpty && line.isEmpty()) {
                 return null;
@@ -355,26 +369,29 @@ public class PivoLab {
         }
     }
 
-    private SpaceMarine readMarine(Scanner scanner) {
+    private SpaceMarine readMarine(Scanner scanner, boolean quiet) {
         String name = readObject(scanner,
                 s -> s,
                 Predicate.not(String::isEmpty),
                 "Enter name: ",
                 "name can't be empty",
-                false);
+                false,
+                quiet);
 
         double x = readObject(scanner,
                 Double::parseDouble,
                 d -> true,
                 "Enter x coordinate: ",
                 "not a valid coordinate",
-                false);
+                false,
+                quiet);
         Double y = readObject(scanner,
                 Double::parseDouble,
                 d -> true,
                 "Enter y coordinate: ",
                 "not a valid coordinate",
-                false);
+                false,
+                quiet);
 
         Coordinates coordinates = new Coordinates(x, y);
 
@@ -385,7 +402,8 @@ public class PivoLab {
                 f -> f > 0,
                 "Enter health (must be >0): ",
                 "not a valid health value",
-                false);
+                false,
+                quiet);
 
         AstartesCategory category = readObject(scanner,
                 AstartesCategory::valueOf,
@@ -394,7 +412,8 @@ public class PivoLab {
                         .map(AstartesCategory::toString)
                         .collect(Collectors.joining(", ")) + "]) or leave empty: ",
                 "not a valid category",
-                true);
+                true,
+                quiet);
 
         Weapon weaponType = readObject(scanner,
                 Weapon::valueOf,
@@ -403,7 +422,8 @@ public class PivoLab {
                         .map(Weapon::toString)
                         .collect(Collectors.joining(", ")) + "]): ",
                 "not a valid weapon type",
-                false);
+                false,
+                quiet);
 
         MeleeWeapon meleeWeapon = readObject(scanner,
                 MeleeWeapon::valueOf,
@@ -412,7 +432,8 @@ public class PivoLab {
                         .map(MeleeWeapon::toString)
                         .collect(Collectors.joining(", ")) + "]): ",
                 "not a valid melee weapon type",
-                false);
+                false,
+                quiet);
 
         boolean needChapter = readObject(scanner,
                 s -> {
@@ -427,7 +448,8 @@ public class PivoLab {
                 nc -> true,
                 "Do you want to add a chapter (y/n): ",
                 "enter 'y' or 'n'",
-                false);
+                false,
+                quiet);
         Chapter chapter = null;
         if (needChapter) {
             String chapterName = readObject(scanner,
@@ -435,14 +457,16 @@ public class PivoLab {
                     Predicate.not(String::isEmpty),
                     "Enter chapter name: ",
                     "chapter name can't be empty",
-                    false);
+                    false,
+                    quiet);
 
             String world = readObject(scanner,
                     w -> w,
                     w -> true,
                     "Enter world name or leave empty: ",
                     "",
-                    true);
+                    true,
+                    quiet);
             chapter = new Chapter(chapterName, world);
         }
         return new SpaceMarine(++maxid, name, coordinates, creationDate, health,
@@ -503,7 +527,8 @@ public class PivoLab {
 
     private void filterGreaterThanCategory(AstartesCategory category) {
         for (Map.Entry<Long, SpaceMarine> e : marines.entrySet()) {
-            if (e.getValue().getCategory().ordinal() > category.ordinal()) {
+            AstartesCategory marineCat = e.getValue().getCategory();
+            if (marineCat!= null && marineCat.ordinal() > category.ordinal()) {
                 printMarine(e.getKey(), e.getValue());
                 System.out.println();
             }

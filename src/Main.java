@@ -1,5 +1,3 @@
-import java.io.IOException;
-import java.text.ParseException;
 import java.util.Scanner;
 
 public class Main {
@@ -16,6 +14,6 @@ public class Main {
             return;
         }
 
-        pivo.interact(scanner);
+        pivo.interact(scanner, false);
     }
 }
