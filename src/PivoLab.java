@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 
 public class PivoLab {
 
-    Map<Long, SpaceMarine> marines = new HashMap<>();
+    private Map<Long, SpaceMarine> marines = new HashMap<>();
 
-    String saveFilePath = System.getenv("PIVOFILE");
+    private final String saveFilePath = System.getenv("PIVOFILE");
 
     long maxid = 0;
 
